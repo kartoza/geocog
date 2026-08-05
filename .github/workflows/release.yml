@@ -242,6 +242,152 @@ jobs:
           name: geocog-snap
           path: ${{ steps.build.outputs.snap }}
 
+  # ── macOS .dmg installers (Intel + Apple Silicon) ────────
+  build-dmg:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            arch: amd64
+          - os: macos-14
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      # All optional — unset secrets make the related steps skip cleanly.
+      MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+      MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+      MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]" pyinstaller
+      - name: Build standalone binary
+        run: |
+          pyinstaller --onefile \
+            --name geocog \
+            --collect-all textual \
+            --add-data "src/geocog/app.tcss:geocog" \
+            --add-data "src/geocog/i18n:geocog/i18n" \
+            src/geocog/__main__.py
+      - name: Import signing certificate into a temporary keychain
+        if: ${{ env.MACOS_CERT_BASE64 != '' }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/geocog-signing.keychain-db"
+          KCPASS="ci-$RANDOM-$RANDOM"
+          CERT="$RUNNER_TEMP/cert.p12"
+          echo "$MACOS_CERT_BASE64" | base64 --decode > "$CERT"
+          security create-keychain -p "$KCPASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KCPASS" "$KEYCHAIN"
+          security import "$CERT" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          # Allow codesign to use the key without an interactive prompt.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KCPASS" "$KEYCHAIN" >/dev/null
+          # Make our keychain the default + first in the search list.
+          security list-keychains -d user -s "$KEYCHAIN" \
+            $(security list-keychains -d user | sed s/\"//g)
+          security default-keychain -s "$KEYCHAIN"
+          rm -f "$CERT"
+          echo "Imported signing identities:"
+          security find-identity -v -p codesigning "$KEYCHAIN"
+      - name: Sign binary (only if a signing identity is configured)
+        if: ${{ env.MACOS_SIGN_IDENTITY != '' }}
+        run: |
+          codesign --force --options runtime --timestamp \
+            --sign "${MACOS_SIGN_IDENTITY}" dist/geocog
+          codesign --verify --strict --verbose=2 dist/geocog
+      - name: Note when unsigned
+        if: ${{ env.MACOS_SIGN_IDENTITY == '' }}
+        run: echo "No MACOS_SIGN_IDENTITY secret — shipping an unsigned binary."
+      - name: Assemble .dmg
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          STAGE="dmg-root"
+          mkdir -p "$STAGE"
+          cp dist/geocog "$STAGE/geocog"
+          chmod 755 "$STAGE/geocog"
+          cp packaging/macos/install.command "$STAGE/install.command"
+          chmod 755 "$STAGE/install.command"
+          cp packaging/macos/README.txt "$STAGE/README.txt"
+          hdiutil create -volname "geocog ${VERSION}" \
+            -srcfolder "$STAGE" -ov -format UDZO \
+            "geocog-${VERSION}-macos-${{ matrix.arch }}.dmg"
+      - name: Sign the .dmg (only if a signing identity is configured)
+        if: ${{ env.MACOS_SIGN_IDENTITY != '' }}
+        run: |
+          codesign --force --timestamp --sign "${MACOS_SIGN_IDENTITY}" \
+            geocog-*-macos-${{ matrix.arch }}.dmg
+      - name: Notarize & staple (only if notary credentials are configured)
+        if: ${{ env.MACOS_NOTARY_APPLE_ID != '' }}
+        run: |
+          DMG=$(ls geocog-*-macos-${{ matrix.arch }}.dmg)
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$MACOS_NOTARY_APPLE_ID" \
+            --team-id "$MACOS_NOTARY_TEAM_ID" \
+            --password "$MACOS_NOTARY_PASSWORD" --wait
+          xcrun stapler staple "$DMG"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-dmg-${{ matrix.arch }}
+          path: "*.dmg"
+
+  # ── Windows .msi installer (WiX) ─────────────────────────
+  build-msi:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]" pyinstaller
+      - name: Build standalone binary
+        run: |
+          pyinstaller --onefile `
+            --name geocog `
+            --collect-all textual `
+            --icon packaging/windows/geocog.ico `
+            --add-data "src/geocog/app.tcss;geocog" `
+            --add-data "src/geocog/i18n;geocog/i18n" `
+            src/geocog/__main__.py
+      - name: Install WiX
+        run: dotnet tool install --global wix
+      - name: Build MSI
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          wix build packaging/windows/geocog.wxs \
+            -d Version="${VERSION}" \
+            -d BinPath="dist/geocog.exe" \
+            -o "geocog-${VERSION}-amd64.msi"
+      - name: Sign MSI (optional — only if a code-signing cert is configured)
+        shell: bash
+        env:
+          WINDOWS_CERT_BASE64: ${{ secrets.WINDOWS_CERT_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          if [ -n "${WINDOWS_CERT_BASE64}" ]; then
+            echo "${WINDOWS_CERT_BASE64}" | base64 -d > cert.pfx
+            signtool sign //f cert.pfx //p "${WINDOWS_CERT_PASSWORD}" \
+              //tr http://timestamp.digicert.com //td sha256 //fd sha256 \
+              geocog-*-amd64.msi
+            rm -f cert.pfx
+          else
+            echo "No WINDOWS_CERT_BASE64 secret — shipping an unsigned MSI."
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-msi
+          path: "*.msi"
+
   # ── Documentation PDF ────────────────────────────────────
   build-docs-pdf:
     runs-on: ubuntu-latest
@@ -308,6 +454,8 @@ jobs:
       - build-rpm
       - build-appimage
       - build-snap
+      - build-dmg
+      - build-msi
       - build-docs-pdf
       - release-sbom
     runs-on: ubuntu-latest
@@ -334,10 +482,13 @@ jobs:
 
           ### Installation
 
-          #### Nix (fully self-contained — recommended)
+          #### Package managers (managed install + auto-update)
 
           ```bash
-          nix run github:kartoza/geocog#geocog
+          winget install Kartoza.geocog          # Windows
+          choco install geocog                    # Windows (Chocolatey)
+          brew install --cask kartoza/geocog/geocog   # macOS
+          nix run github:kartoza/geocog#geocog    # any (self-contained)
           ```
 
           #### Linux
@@ -352,22 +503,30 @@ jobs:
 
           #### macOS
 
-          | Architecture | File |
-          |-------------|------|
-          | **Intel (x86_64)** | `geocog-macos-amd64` |
-          | **Apple Silicon (M1/M2/M3)** | `geocog-macos-arm64` |
+          | Architecture | Installer (recommended) | Bare binary |
+          |-------------|-------------------------|-------------|
+          | **Intel (x86_64)** | `geocog-VERSION-macos-amd64.dmg` | `geocog-macos-amd64` |
+          | **Apple Silicon (M1/M2/M3)** | `geocog-VERSION-macos-arm64.dmg` | `geocog-macos-arm64` |
+
+          Open the `.dmg` and double-click **install.command** (installs to
+          `/usr/local/bin`). Or install a bare binary manually:
 
           ```bash
           chmod +x geocog-macos-*
           sudo cp geocog-macos-* /usr/local/bin/geocog
           ```
 
-          > **Gatekeeper:** `xattr -d com.apple.quarantine /usr/local/bin/geocog` or allow in System Settings → Privacy & Security.
+          > **Gatekeeper (unsigned):** `xattr -d com.apple.quarantine /usr/local/bin/geocog` or allow in System Settings → Privacy & Security.
 
           #### Windows
 
-          Download `geocog-windows-amd64.exe` and move it to a directory on your `PATH`.
-          > **SmartScreen:** click "More info" → "Run anyway" on first launch.
+          | Installer (recommended) | Bare binary |
+          |-------------------------|-------------|
+          | `geocog-VERSION-amd64.msi` | `geocog-windows-amd64.exe` |
+
+          Run the **MSI** to install geocog to `Program Files` and add it to your
+          `PATH`. Or download the bare `.exe` and place it on your `PATH`.
+          > **SmartScreen (unsigned):** click "More info" → "Run anyway" on first launch.
 
           #### Python (pip)
 
@@ -405,9 +564,105 @@ jobs:
             artifacts/geocog-macos-amd64/*
             artifacts/geocog-macos-arm64/*
             artifacts/geocog-windows-amd64.exe/*
+            artifacts/geocog-dmg-amd64/*
+            artifacts/geocog-dmg-arm64/*
+            artifacts/geocog-msi/*
             artifacts/geocog-deb/*
             artifacts/geocog-rpm/**/*
             artifacts/geocog-appimage/*
             artifacts/geocog-snap/*
             artifacts/geocog-docs-pdf/*
             artifacts/geocog-sbom/*
+
+  # ── Chocolatey package (Windows) ─────────────────────────
+  # Builds the .nupkg from the released MSI and (if CHOCO_API_KEY is set) pushes
+  # it to the Chocolatey community repository: `choco install geocog`.
+  publish-chocolatey:
+    needs: github-release
+    runs-on: windows-latest
+    env:
+      CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render package (inject version, MSI url + checksum)
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          MSI="geocog-${VERSION}-amd64.msi"
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${MSI}"
+          curl -fsSL "$URL" -o "$MSI"
+          SHA=$(sha256sum "$MSI" | cut -d' ' -f1)
+          cd packaging/chocolatey
+          sed -i "s/__VERSION__/${VERSION}/g" geocog.nuspec
+          sed -i "s|__URL64__|${URL}|g;  s/__CHECKSUM64__/${SHA}/g" tools/chocolateyInstall.ps1
+          cp ../../LICENSE tools/LICENSE.txt
+      - name: choco pack
+        shell: pwsh
+        run: cd packaging/chocolatey; choco pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-chocolatey
+          path: packaging/chocolatey/*.nupkg
+      - name: choco push (only if CHOCO_API_KEY is configured)
+        if: ${{ env.CHOCO_API_KEY != '' }}
+        shell: pwsh
+        run: |
+          cd packaging/chocolatey
+          choco apikey --key $env:CHOCO_API_KEY --source https://push.chocolatey.org/
+          choco push (Get-ChildItem *.nupkg | Select-Object -First 1).Name --source https://push.chocolatey.org/
+
+  # ── winget submission (Windows Package Manager) ──────────
+  # Submits a manifest PR to microsoft/winget-pkgs via wingetcreate.
+  # Requires WINGET_TOKEN (a PAT that can push to your winget-pkgs fork).
+  # First-ever submission must be seeded once with `wingetcreate new`.
+  publish-winget:
+    needs: github-release
+    runs-on: windows-latest
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Submit to winget-pkgs
+        if: ${{ env.WINGET_TOKEN != '' }}
+        shell: pwsh
+        run: |
+          $Version = "${{ github.ref_name }}".TrimStart('v')
+          $Msi = "geocog-$Version-amd64.msi"
+          $Url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$Msi"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          ./wingetcreate.exe update Kartoza.geocog `
+            --version $Version --urls "$Url" `
+            --submit --token $env:WINGET_TOKEN
+
+  # ── Homebrew cask (macOS) ────────────────────────────────
+  # Renders the cask from the released DMGs and pushes it to the tap
+  # `kartoza/homebrew-geocog`: `brew install --cask kartoza/geocog/geocog`.
+  # Requires HOMEBREW_TAP_TOKEN (a PAT that can push to the tap repo).
+  publish-homebrew-cask:
+    needs: github-release
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render cask + push to tap (only if HOMEBREW_TAP_TOKEN is configured)
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          curl -fsSL "${base}/geocog-${VERSION}-macos-arm64.dmg"  -o arm64.dmg
+          curl -fsSL "${base}/geocog-${VERSION}-macos-amd64.dmg"  -o amd64.dmg
+          SHA_ARM=$(sha256sum arm64.dmg | cut -d' ' -f1)
+          SHA_AMD=$(sha256sum amd64.dmg | cut -d' ' -f1)
+          sed -e "s/__VERSION__/${VERSION}/g" \
+              -e "s/__SHA256_ARM64__/${SHA_ARM}/g" \
+              -e "s/__SHA256_AMD64__/${SHA_AMD}/g" \
+              packaging/homebrew/geocog.rb > geocog.rb
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/kartoza/homebrew-geocog.git" tap
+          mkdir -p tap/Casks
+          cp geocog.rb tap/Casks/geocog.rb
+          cd tap
+          git config user.name "kartoza-bot"
+          git config user.email "info@kartoza.com"
+          git add Casks/geocog.rb
+          git commit -m "geocog ${VERSION}" || echo "no changes"
+          git push

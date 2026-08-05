@@ -51,9 +51,13 @@ is rebuilt on every release.
 | Method | Command |
 |--------|---------|
 | **Nix** (self-contained, recommended) | `nix run github:kartoza/geocog#geocog` |
+| **Windows** (winget) | `winget install Kartoza.geocog` |
+| **Windows** (Chocolatey) | `choco install geocog` |
+| **Windows** (MSI) | download `geocog-*-amd64.msi` from [Releases](https://github.com/kartoza/geocog/releases) and double-click |
+| **macOS** (Homebrew) | `brew install --cask kartoza/geocog/geocog` |
+| **macOS** (DMG) | download `geocog-*-macos-*.dmg`, open, run **install.command** |
 | **pip / pipx** (needs `gdal` + `mc` on PATH) | `pipx install geocog` |
 | **Linux packages** | `.deb`, `.rpm`, AppImage, Snap — see [Releases](https://github.com/kartoza/geocog/releases) |
-| **Standalone binary** | download for Linux/macOS/Windows from [Releases](https://github.com/kartoza/geocog/releases) |
 
 > Prerequisite for Nix: flakes enabled. If `nix run` complains, add
 > `experimental-features = nix-command flakes` to `~/.config/nix/nix.conf`.

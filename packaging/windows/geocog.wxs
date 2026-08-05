@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+  SPDX-License-Identifier: MIT
+
+  WiX v4/v5 source for the geocog Windows installer (MSI). Built by the release
+  workflow with:
+    wix build packaging/windows/geocog.wxs -d Version=X.Y.Z -d BinPath=dist\geocog.exe -o geocog.msi
+
+  Installs geocog.exe to "Program Files\geocog" and adds it to the system PATH.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="geocog"
+           Manufacturer="Kartoza (Pty) Ltd"
+           Version="$(Version)"
+           UpgradeCode="b6b3a2e4-9c7d-4f1a-8e2b-1f5c7a9d3e10"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of geocog is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="geocog.ico" SourceFile="packaging/windows/geocog.ico" />
+    <Property Id="ARPPRODUCTICON" Value="geocog.ico" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/kartoza/geocog" />
+    <Property Id="ARPURLINFOABOUT" Value="https://kartoza.com" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="geocog">
+        <Component Id="MainExe" Guid="*">
+          <File Id="geocogExe" Source="$(BinPath)" Name="geocog.exe" KeyPath="yes" />
+          <Environment Id="UpdatePath"
+                       Name="PATH"
+                       Value="[INSTALLFOLDER]"
+                       Part="last"
+                       Action="set"
+                       Permanent="no"
+                       System="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="geocog" Level="1">
+      <ComponentRef Id="MainExe" />
+    </Feature>
+  </Package>
+</Wix>

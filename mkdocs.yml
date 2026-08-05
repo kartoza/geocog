@@ -60,6 +60,7 @@ nav:
   - Developer Guide:
       - Architecture: architecture.md
       - Contributing: contributing.md
+      - Release & signing setup: releasing.md
 
 extra:
   social:

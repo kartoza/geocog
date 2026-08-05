@@ -40,7 +40,9 @@ jobs:
         run: mkdocs build --strict -f mkdocs.pdf.yml
 
       - name: Verify PDF was produced
-        run: test -f site/pdf/geocog.pdf && echo "PDF OK: $(du -h site/pdf/geocog.pdf)"
+        run: |
+          test -f site/pdf/geocog.pdf
+          echo "PDF OK ($(du -h site/pdf/geocog.pdf | cut -f1))"
 
       - uses: actions/upload-artifact@v4
         with:

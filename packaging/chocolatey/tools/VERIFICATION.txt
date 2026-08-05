@@ -1,0 +1,19 @@
+VERIFICATION
+============
+
+geocog is published by Kartoza (Pty) Ltd under the MIT licence.
+
+The installer distributed by this package is the official signed-or-unsigned MSI
+release asset built by the geocog GitHub Actions release workflow:
+
+  https://github.com/kartoza/geocog/releases
+
+To verify, compare the SHA256 checksum embedded in
+`tools\chocolateyInstall.ps1` against the checksum of the MSI downloaded from
+the release page:
+
+  Get-FileHash .\geocog-<version>-amd64.msi -Algorithm SHA256
+
+The package source (nuspec + install scripts) lives at:
+
+  https://github.com/kartoza/geocog/tree/main/packaging/chocolatey

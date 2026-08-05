@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+  SPDX-License-Identifier: MIT
+  Version, MSI URL and checksum are injected by the release workflow.
+-->
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>geocog</id>
+    <version>__VERSION__</version>
+    <packageSourceUrl>https://github.com/kartoza/geocog/tree/main/packaging/chocolatey</packageSourceUrl>
+    <owners>kartoza</owners>
+    <title>geocog</title>
+    <authors>Kartoza (Pty) Ltd</authors>
+    <projectUrl>https://github.com/kartoza/geocog</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/kartoza/geocog/main/resources/geocog.png</iconUrl>
+    <copyright>2026 Kartoza (Pty) Ltd</copyright>
+    <licenseUrl>https://github.com/kartoza/geocog/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/kartoza/geocog</projectSourceUrl>
+    <docsUrl>https://kartoza.github.io/geocog/</docsUrl>
+    <bugTrackerUrl>https://github.com/kartoza/geocog/issues</bugTrackerUrl>
+    <tags>cog gdal vrt minio s3 geoserver tui gis raster geospatial</tags>
+    <summary>A small, fast TUI and toolkit for the GeoTIFF → COG → object storage → GeoServer VRT workflow.</summary>
+    <description>
+geocog turns ordinary GeoTIFFs into cloud-hosted Cloud Optimized GeoTIFFs
+(COGs), uploads them to S3/MinIO, and wraps one or more of them in a single
+GeoServer-ready GDAL VRT — all from a keyboard-driven terminal UI plus matching
+CLI tools.
+
+This package installs the geocog MSI. **GDAL** (and, for uploads, the MinIO
+client `mc`) must be available on PATH for conversion/upload/VRT steps:
+
+    choco install gdal
+    </description>
+    <dependencies>
+      <dependency id="gdal" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

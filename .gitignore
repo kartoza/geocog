@@ -27,6 +27,9 @@ site/
 *.rpm
 *.AppImage
 *.snap
+*.msi
+*.dmg
+*.nupkg
 geocog-sbom.json
 
 # Large sample rasters & generated geodata (not tracked — fetch/generate locally)
