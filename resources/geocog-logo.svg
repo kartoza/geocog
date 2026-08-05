@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="200" viewBox="0 0 640 200" role="img" aria-label="geocog logo">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1b2a"/>
+      <stop offset="1" stop-color="#12263a"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a9d8f"/>
+      <stop offset="1" stop-color="#1f7a70"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="200" rx="24" fill="url(#sky)"/>
+  <!-- stacked COG tiles / cloud raster -->
+  <g transform="translate(46 40)">
+    <rect x="0"  y="44" width="112" height="72" rx="6" fill="#1f7a70" opacity="0.55"/>
+    <rect x="14" y="26" width="112" height="72" rx="6" fill="url(#teal)" opacity="0.8"/>
+    <rect x="28" y="8"  width="112" height="72" rx="6" fill="url(#teal)"/>
+    <!-- tile grid -->
+    <g stroke="#0d1b2a" stroke-width="2" opacity="0.5">
+      <line x1="65"  y1="8" x2="65"  y2="80"/>
+      <line x1="102" y1="8" x2="102" y2="80"/>
+      <line x1="28"  y1="32" x2="140" y2="32"/>
+      <line x1="28"  y1="56" x2="140" y2="56"/>
+    </g>
+    <!-- cog gear (the "cog" pun) -->
+    <g transform="translate(104 60)" fill="#e76f51">
+      <circle cx="0" cy="0" r="16"/>
+      <circle cx="0" cy="0" r="7" fill="#0d1b2a"/>
+      <g>
+        <rect x="-4" y="-24" width="8" height="10" rx="2"/>
+        <rect x="-4" y="14"  width="8" height="10" rx="2"/>
+        <rect x="-24" y="-4" width="10" height="8" rx="2"/>
+        <rect x="14"  y="-4" width="10" height="8" rx="2"/>
+      </g>
+    </g>
+  </g>
+  <!-- wordmark -->
+  <g transform="translate(230 118)" font-family="Inter, 'Segoe UI', sans-serif">
+    <text x="0" y="0" font-size="72" font-weight="700" fill="#f4f1de">geo<tspan fill="#e76f51">cog</tspan></text>
+    <text x="4" y="34" font-size="20" font-weight="400" fill="#9db4c0" letter-spacing="2">COG · S3 · VRT</text>
+  </g>
+</svg>

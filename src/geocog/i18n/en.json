@@ -1,0 +1,13 @@
+{
+  "app.title": "geocog",
+  "app.subtitle": "COG → object storage → VRT",
+  "mode.cog": "Convert",
+  "mode.upload": "Upload",
+  "mode.vrt": "VRT",
+  "action.run": "Run",
+  "action.quit": "Quit",
+  "action.connections": "Connections",
+  "vault.passphrase.prompt": "Enter vault passphrase",
+  "vault.passphrase.bad": "Incorrect passphrase",
+  "status.ready": "Ready"
+}

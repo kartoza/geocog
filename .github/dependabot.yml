@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(ci)"
+    labels: ["dependencies", "ci"]
+
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(deps)"
+    labels: ["dependencies", "python"]

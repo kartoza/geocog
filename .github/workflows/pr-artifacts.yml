@@ -1,0 +1,160 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+name: PR Artifacts & Security
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: pr-artifacts-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Python wheel + sdist ─────────────────────────────────
+  build-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel and sdist
+        run: pip install build && python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+          retention-days: 7
+
+  # ── Standalone binaries (preview) ────────────────────────
+  build-binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: geocog-linux-amd64
+            binary: dist/geocog
+          - os: macos-latest
+            artifact: geocog-macos-amd64
+            binary: dist/geocog
+          - os: macos-14
+            artifact: geocog-macos-arm64
+            binary: dist/geocog
+          - os: windows-latest
+            artifact: geocog-windows-amd64.exe
+            binary: dist/geocog.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]" pyinstaller
+      - name: Build standalone binary
+        run: |
+          pyinstaller --onefile \
+            --name geocog \
+            --collect-all textual \
+            --add-data "src/geocog/app.tcss:geocog" \
+            --add-data "src/geocog/i18n:geocog/i18n" \
+            src/geocog/__main__.py
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.binary }}
+          retention-days: 7
+
+  # ── Software Bill of Materials ───────────────────────────
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project
+        run: pip install -e ".[dev]"
+      - name: Generate SBOM (CycloneDX JSON)
+        run: |
+          pip install cyclonedx-bom
+          cyclonedx-py environment -o geocog-sbom.json --output-format JSON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-sbom
+          path: geocog-sbom.json
+          retention-days: 30
+
+  # ── Security scanning ────────────────────────────────────
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install scanners
+        run: pip install -e "." pip-audit bandit
+      - name: Run scans (non-blocking, report collected)
+        id: scan
+        run: |
+          {
+            echo "### 🔒 Security scan"
+            echo ""
+            echo "#### pip-audit (dependency vulnerabilities)"
+            echo '```'
+            pip-audit --progress-spinner off 2>&1 || echo "pip-audit reported findings (see above)."
+            echo '```'
+            echo ""
+            echo "#### bandit (static analysis)"
+            echo '```'
+            bandit -r src -q 2>&1 || echo "bandit reported findings (see above)."
+            echo '```'
+          } > security-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          retention-days: 30
+      - name: Post security report to PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: security
+          path: security-report.md
+
+  # ── Summarise artifacts on the PR ────────────────────────
+  artifact-comment:
+    needs: [build-python, build-binary, sbom]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post artifact list to PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: artifacts
+          message: |
+            ### 📦 Build artifacts for this PR
+
+            The following preview artifacts were built and are available from the
+            **[workflow run summary](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})**
+            (scroll to **Artifacts**; retained 7 days):
+
+            | Artifact | Contents |
+            |----------|----------|
+            | `python-dist` | Wheel + sdist |
+            | `geocog-linux-amd64` | Standalone Linux binary |
+            | `geocog-macos-amd64` | Standalone macOS (Intel) binary |
+            | `geocog-macos-arm64` | Standalone macOS (Apple Silicon) binary |
+            | `geocog-windows-amd64.exe` | Standalone Windows binary |
+            | `geocog-sbom` | CycloneDX SBOM (JSON) |
+
+            > ℹ️ Standalone binaries bundle Python + Textual, but **GDAL** and the
+            > MinIO client (`mc`) must be on your `PATH` for conversion/upload/VRT
+            > steps. The self-contained option is `nix run .#geocog`.

@@ -1,0 +1,71 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+site_name: geocog
+site_description: GeoTIFF → COG → object storage → GeoServer VRT — a small, fast TUI and toolkit for cloud-hosted rasters
+site_url: https://kartoza.github.io/geocog/
+repo_url: https://github.com/kartoza/geocog
+repo_name: kartoza/geocog
+copyright: Made with 💗 by Kartoza
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  logo: img/geocog-logo.svg
+  favicon: img/favicon.png
+  palette:
+    scheme: slate
+    primary: black
+    accent: deep orange
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - navigation.footer
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - User Guide:
+      - Install: install.md
+      - The TUI: tui.md
+      - CLI walkthrough (DGT): dgt-cog-to-vrt.md
+  - Administrator Guide:
+      - Buckets, keys & publishing: administrator.md
+  - Concepts:
+      - COGs & HTTP Range: cog-range-requests.md
+  - Developer Guide:
+      - Architecture: architecture.md
+      - Contributing: contributing.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/kartoza/geocog
+    - icon: fontawesome/solid/globe
+      link: https://kartoza.com
+    - icon: fontawesome/solid/heart
+      link: https://github.com/sponsors/kartoza

@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+name: ✨ Feature request
+description: Suggest an idea, following our user-story workflow
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        New features start life as a user story. Please frame your request that way —
+        it helps us size and prioritise the work.
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User story
+      description: "As a <role>, I want <capability>, so that <benefit>."
+      placeholder: As a GIS operator, I want batch VRT creation, so that I can publish many mosaics at once.
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: Success criteria
+      description: How will we know this is done? List concrete, testable outcomes.
+      placeholder: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / alternatives
+      description: Why is this needed? What have you tried or considered?
+    validations:
+      required: false
+  - type: dropdown
+    id: size
+    attributes:
+      label: Rough size
+      options:
+        - "XS — an hour or two"
+        - "S — a day"
+        - "M — a few days"
+        - "L — a week+"
+        - "Not sure"
+    validations:
+      required: false

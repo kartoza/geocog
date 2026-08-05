@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+name: 🐛 Bug report
+description: Report something that isn't working as expected
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to file a bug! Please fill in the details below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+      placeholder: When I run `nix run .#make-vrt` with … I get …
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal, exact steps (commands, inputs, sample data).
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: geocog version
+      description: Output of `geocog --version` or the release/commit you are on.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install geocog?
+      options:
+        - Nix flake (nix run / nix develop)
+        - pip / pipx
+        - Standalone binary
+        - .deb / .rpm / AppImage / Snap
+        - From source
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS + version, GDAL version (`gdalinfo --version`), `mc` version if relevant.
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any error output. **Redact all credentials** before posting.
+      render: shell
+    validations:
+      required: false

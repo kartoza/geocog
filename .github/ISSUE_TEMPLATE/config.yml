@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & discussion
+    url: https://github.com/kartoza/geocog/discussions
+    about: Ask questions and share ideas with the community.
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/kartoza/geocog/security/advisories/new
+    about: Please report vulnerabilities privately, not as public issues.
+  - name: 💗 Support geocog
+    url: https://github.com/sponsors/kartoza
+    about: Help sustain development via GitHub Sponsors.

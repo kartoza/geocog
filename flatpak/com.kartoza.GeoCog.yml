@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+#
+# Flatpak manifest for geocog. Building offline requires vendored Python wheels
+# (flatpak-pip-generator); the release workflow keeps this target disabled until
+# that vendoring is wired up. Kept here as the canonical manifest.
+app-id: com.kartoza.GeoCog
+runtime: org.freedesktop.Platform
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+command: geocog
+finish-args:
+  - --share=network
+  - --filesystem=home
+modules:
+  - name: geocog
+    buildsystem: simple
+    build-commands:
+      - pip3 install --prefix=/app --no-build-isolation .
+    sources:
+      - type: dir
+        path: ..

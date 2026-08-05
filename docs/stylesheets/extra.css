@@ -1,0 +1,26 @@
+/* Kartoza brand accents for Material for MkDocs */
+:root {
+  --md-primary-fg-color:        #1F3A5F;  /* navy   */
+  --md-primary-fg-color--dark:  #142A45;
+  --md-accent-fg-color:         #E67E22;  /* orange */
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:  #1F3A5F;
+  --md-accent-fg-color:   #E67E22;
+  --md-typeset-a-color:   #16A085;         /* teal links */
+}
+
+.md-header,
+.md-tabs {
+  background-color: #1F3A5F;
+}
+
+/* screenshots / diagrams */
+.md-typeset img[src$=".svg"] {
+  border-radius: 6px;
+}
+
+.md-typeset .shadow {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}

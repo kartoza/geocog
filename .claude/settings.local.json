@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(export NIX_CONFIG='experimental-features = nix-command flakes')",
+      "Bash(nix develop *)",
+      "Bash(nix build *)",
+      "WebFetch(domain:qgis.org)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

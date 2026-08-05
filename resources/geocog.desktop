@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=geocog
+GenericName=Cloud Optimized GeoTIFF toolkit
+Comment=Turn GeoTIFFs into cloud-hosted COGs and GeoServer-ready VRTs
+Exec=geocog
+Icon=geocog
+Terminal=true
+Type=Application
+Categories=Science;Geography;Utility;
+Keywords=COG;GDAL;VRT;MinIO;S3;GeoServer;raster;GIS;

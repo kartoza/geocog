@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" font-family="'Segoe UI',Helvetica,Arial,sans-serif" role="img" aria-label="COG over HTTP Range data flow">
+  <defs>
+    <marker id="fwd" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#16A085"/>
+    </marker>
+    <marker id="ret" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#E67E22"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="340" fill="#FFFFFF"/>
+  <text x="480" y="30" text-anchor="middle" font-size="19" font-weight="700" fill="#1F3A5F">COG over HTTP Range — the request flows right, only the needed bytes flow back</text>
+
+  <!-- A: GeoServer -->
+  <rect x="20" y="70" width="150" height="70" rx="10" fill="#1F3A5F" stroke="#16A085" stroke-width="2"/>
+  <text x="95" y="100" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="600">GeoServer</text>
+  <text x="95" y="120" text-anchor="middle" fill="#CFE8E0" font-size="12">WMS / WCS</text>
+
+  <!-- B: VRT -->
+  <rect x="250" y="70" width="170" height="70" rx="10" fill="#1F3A5F" stroke="#16A085" stroke-width="2"/>
+  <text x="335" y="100" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="600">GDAL VRT</text>
+  <text x="335" y="120" text-anchor="middle" fill="#CFE8E0" font-size="12">pointers only, no pixels</text>
+
+  <!-- C: S3 API endpoint -->
+  <rect x="500" y="70" width="230" height="70" rx="10" fill="#1F3A5F" stroke="#16A085" stroke-width="2"/>
+  <text x="615" y="98" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="600">S3 API endpoint</text>
+  <text x="615" y="118" text-anchor="middle" fill="#CFE8E0" font-size="12">api.minio.do.kartoza.com</text>
+
+  <!-- D: COG object (cylinder) -->
+  <path d="M810,75 a70,12 0 0 1 140,0 v55 a70,12 0 0 1 -140,0 z" fill="#34495E" stroke="#16A085" stroke-width="2"/>
+  <ellipse cx="880" cy="75" rx="70" ry="12" fill="#3E5871" stroke="#16A085" stroke-width="2"/>
+  <text x="880" y="112" text-anchor="middle" fill="#FFFFFF" font-size="13" font-weight="600">COG in MinIO</text>
+
+  <!-- forward arrows -->
+  <line x1="170" y1="105" x2="246" y2="105" stroke="#16A085" stroke-width="2.5" marker-end="url(#fwd)"/>
+  <line x1="420" y1="105" x2="496" y2="105" stroke="#16A085" stroke-width="2.5" marker-end="url(#fwd)"/>
+  <text x="458" y="95" text-anchor="middle" fill="#0E6655" font-size="11" font-style="italic">/vsicurl/</text>
+  <line x1="740" y1="105" x2="806" y2="105" stroke="#16A085" stroke-width="2.5" marker-end="url(#fwd)"/>
+  <text x="770" y="92" text-anchor="middle" fill="#0E6655" font-size="9.5" font-style="italic">Range: bytes=…</text>
+
+  <!-- return path: storage -> VRT -> GeoServer, carrying 206 partial content -->
+  <path d="M880,150 v50 H95 v-58" fill="none" stroke="#E67E22" stroke-width="2.5" marker-end="url(#ret)"/>
+  <text x="490" y="192" text-anchor="middle" fill="#B9770E" font-size="12" font-weight="600">206 Partial Content — only the tiles / overview needed (KB, not the whole file)</text>
+
+  <!-- contrast / warning -->
+  <rect x="250" y="248" width="460" height="66" rx="8" fill="#FBEEE6" stroke="#E74C3C" stroke-width="1.5"/>
+  <text x="480" y="272" text-anchor="middle" fill="#C0392B" font-size="12.5" font-weight="700">Via the Console share-proxy instead:</text>
+  <text x="480" y="294" text-anchor="middle" fill="#C0392B" font-size="12.5">200 OK = the entire file on every read → streaming, not range</text>
+</svg>

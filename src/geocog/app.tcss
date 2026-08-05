@@ -1,0 +1,111 @@
+/* geocog — Kartoza brand (orange #E67E22, teal #16A085, navy #1F3A5F) */
+
+Screen {
+    background: $background;
+}
+
+Header {
+    background: $panel;
+    color: $text;
+    text-style: bold;
+}
+
+HeaderIcon {
+    display: none;
+}
+
+#modebar {
+    height: 1;
+    width: 100%;
+    background: $panel;
+    color: $text-muted;
+    content-align: center middle;
+}
+
+#panes {
+    height: 1fr;
+}
+
+#leftpane, #rightpane {
+    width: 1fr;
+    height: 100%;
+}
+
+FileBrowser, S3Tree {
+    border: round $secondary;
+    border-title-align: left;
+    border-title-color: $secondary;
+    height: 100%;
+    background: $surface;
+    padding: 0 1;
+}
+
+FileBrowser:focus, S3Tree:focus {
+    border: round $primary;
+    border-title-color: $primary;
+}
+
+#log {
+    height: 8;
+    border: round $primary 60%;
+    background: $surface;
+    padding: 0 1;
+}
+
+#credit {
+    dock: bottom;
+    height: 1;
+    width: 100%;
+    content-align: center middle;
+    color: $accent-lighten-2;
+    background: $panel;
+}
+
+/* ---- modal dialogs ---- */
+.dialog {
+    width: 60;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    background: $panel;
+    border: thick $primary;
+}
+
+.dialog.wide {
+    width: 76;
+    height: auto;
+}
+
+.dialog-title {
+    text-style: bold;
+    color: $primary;
+    padding-bottom: 1;
+}
+
+.dialog Input {
+    margin-bottom: 1;
+}
+
+.dialog OptionList {
+    height: 10;
+    border: round $secondary;
+    background: $surface;
+    margin-bottom: 1;
+}
+
+.dialog-buttons {
+    height: auto;
+    align-horizontal: right;
+}
+
+.dialog-buttons Button {
+    margin-left: 2;
+}
+
+.error {
+    color: $error;
+}
+
+.dim {
+    color: $text-muted;
+}

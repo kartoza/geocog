@@ -1,0 +1,46 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Ephemeral mc config
+.mc/
+
+# Nix build symlinks
+result
+result-*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# MkDocs output
+site/
+
+# Packaging outputs
+*.deb
+*.rpm
+*.AppImage
+*.snap
+geocog-sbom.json
+
+# Large sample rasters & generated geodata (not tracked — fetch/generate locally)
+*.tif
+*.tiff
+*.cog.tif
+*.vrt
+cogs/
+dgt/
+vrt/
+
+# Prompt log (session context)
+PROMPT.log
+
+# One-off GitHub bootstrap helper + its capture
+publish.sh
+claude.out

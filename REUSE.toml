@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+#
+# REUSE configuration: blanket licensing for files that cannot carry an inline
+# SPDX header (data, docs, generated lockfiles). See https://reuse.software.
+version = 1
+
+[[annotations]]
+path = [
+  "**.md",
+  "**.json",
+  "**.svg",
+  "**.png",
+  "**.tcss",
+  "**.vrt",
+  "**.yml",
+  "**.yaml",
+  "**.cfg",
+  "**.desktop",
+  "**.spec",
+  "**.exrc",
+  "Makefile",
+  ".exrc",
+  ".nvim.lua",
+  "flake.lock",
+  ".gitignore",
+  ".env.example",
+  "docs/**",
+  "snap/**",
+  "flatpak/**",
+  "resources/**",
+  ".github/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Kartoza (Pty) Ltd <info@kartoza.com>"
+SPDX-License-Identifier = "MIT"

@@ -1,0 +1,413 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  # ── Python wheel + sdist ─────────────────────────────────
+  build-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel and sdist
+        run: pip install build && python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+
+  # ── Standalone binaries via PyInstaller ──────────────────
+  build-binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: geocog-linux-amd64
+            binary: dist/geocog
+          - os: macos-latest
+            artifact: geocog-macos-amd64
+            binary: dist/geocog
+          - os: macos-14
+            artifact: geocog-macos-arm64
+            binary: dist/geocog
+          - os: windows-latest
+            artifact: geocog-windows-amd64.exe
+            binary: dist/geocog.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]" pyinstaller
+      - name: Build standalone binary
+        run: |
+          pyinstaller --onefile \
+            --name geocog \
+            --collect-all textual \
+            --add-data "src/geocog/app.tcss:geocog" \
+            --add-data "src/geocog/i18n:geocog/i18n" \
+            src/geocog/__main__.py
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.binary }}
+
+  # ── Debian .deb package ──────────────────────────────────
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: |
+          pip install -e ".[dev]" pyinstaller
+          sudo apt-get update && sudo apt-get install -y dpkg-dev
+      - name: Build binary
+        run: |
+          pyinstaller --onefile \
+            --name geocog \
+            --collect-all textual \
+            --add-data "src/geocog/app.tcss:geocog" \
+            --add-data "src/geocog/i18n:geocog/i18n" \
+            src/geocog/__main__.py
+      - name: Package as .deb
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mkdir -p pkg/DEBIAN pkg/usr/local/bin
+          cp dist/geocog pkg/usr/local/bin/geocog
+          chmod 755 pkg/usr/local/bin/geocog
+          cat > pkg/DEBIAN/control << EOF
+          Package: geocog
+          Version: ${VERSION}
+          Section: science
+          Priority: optional
+          Architecture: amd64
+          Depends: gdal-bin
+          Recommends: minio-client
+          Maintainer: Kartoza (Pty) Ltd <info@kartoza.com>
+          Description: TUI + toolkit for the GeoTIFF -> COG -> object storage -> VRT workflow
+           A small, fast, keyboard-driven terminal UI (and matching CLI tools) that
+           turns GeoTIFFs into Cloud Optimized GeoTIFFs, uploads them to S3/MinIO,
+           and wraps them in a GeoServer-ready GDAL VRT. Requires GDAL at runtime.
+          Homepage: https://github.com/kartoza/geocog
+          EOF
+          dpkg-deb --build pkg geocog_${VERSION}_amd64.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-deb
+          path: "*.deb"
+
+  # ── RPM package ──────────────────────────────────────────
+  build-rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: |
+          pip install -e ".[dev]" pyinstaller
+          sudo apt-get update && sudo apt-get install -y rpm
+      - name: Build binary
+        run: |
+          pyinstaller --onefile \
+            --name geocog \
+            --collect-all textual \
+            --add-data "src/geocog/app.tcss:geocog" \
+            --add-data "src/geocog/i18n:geocog/i18n" \
+            src/geocog/__main__.py
+      - name: Package as .rpm
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          mkdir -p rpmbuild/BUILDROOT/geocog-${VERSION}-1.x86_64/usr/local/bin
+          cp dist/geocog rpmbuild/BUILDROOT/geocog-${VERSION}-1.x86_64/usr/local/bin/
+          chmod 755 rpmbuild/BUILDROOT/geocog-${VERSION}-1.x86_64/usr/local/bin/geocog
+          cat > rpmbuild/SPECS/geocog.spec << EOF
+          Name: geocog
+          Version: ${VERSION}
+          Release: 1
+          Summary: TUI + toolkit for the GeoTIFF -> COG -> object storage -> VRT workflow
+          License: MIT
+          URL: https://github.com/kartoza/geocog
+          Group: Applications/Science
+          Requires: gdal
+
+          %description
+          A small, fast, keyboard-driven terminal UI and matching CLI tools that turn
+          GeoTIFFs into Cloud Optimized GeoTIFFs, upload them to S3/MinIO, and wrap
+          them in a GeoServer-ready GDAL VRT.
+
+          %files
+          /usr/local/bin/geocog
+          EOF
+          rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/geocog.spec
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-rpm
+          path: rpmbuild/RPMS/**/*.rpm
+
+  # ── AppImage ─────────────────────────────────────────────
+  build-appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: |
+          pip install -e ".[dev]" pyinstaller
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ./appimagetool-x86_64.AppImage --appimage-extract
+          mv squashfs-root appimagetool-extracted
+      - name: Build binary
+        run: |
+          pyinstaller --onefile \
+            --name geocog \
+            --collect-all textual \
+            --add-data "src/geocog/app.tcss:geocog" \
+            --add-data "src/geocog/i18n:geocog/i18n" \
+            src/geocog/__main__.py
+      - name: Package as AppImage
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mkdir -p GeoCog.AppDir/usr/bin
+          cp dist/geocog GeoCog.AppDir/usr/bin/
+          chmod 755 GeoCog.AppDir/usr/bin/geocog
+
+          cat > GeoCog.AppDir/AppRun << 'APPRUN'
+          #!/usr/bin/env bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          exec "${HERE}/usr/bin/geocog" "$@"
+          APPRUN
+          chmod +x GeoCog.AppDir/AppRun
+
+          cat > GeoCog.AppDir/geocog.desktop << EOF
+          [Desktop Entry]
+          Name=geocog
+          Exec=geocog
+          Icon=geocog
+          Type=Application
+          Categories=Science;Geography;
+          Comment=TUI for the GeoTIFF -> COG -> object storage -> VRT workflow
+          Terminal=true
+          EOF
+
+          cp resources/geocog.png GeoCog.AppDir/geocog.png 2>/dev/null || \
+            convert -size 256x256 xc:'#0d1b2a' GeoCog.AppDir/geocog.png 2>/dev/null || \
+            touch GeoCog.AppDir/geocog.png
+
+          ARCH=x86_64 ./appimagetool-extracted/AppRun GeoCog.AppDir \
+            geocog-${VERSION}-x86_64.AppImage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-appimage
+          path: "*.AppImage"
+
+  # ── Snap package ─────────────────────────────────────────
+  build-snap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set version from tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          sed -i "s/^version: .*/version: '${VERSION}'/" snap/snapcraft.yaml
+      - uses: snapcore/action-build@v1
+        id: build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-snap
+          path: ${{ steps.build.outputs.snap }}
+
+  # ── Documentation PDF ────────────────────────────────────
+  build-docs-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PDF system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b \
+            libcairo2 libgdk-pixbuf-2.0-0 libffi-dev fonts-inter
+      - name: Install docs toolchain
+        run: pip install ".[docs]"
+      - name: Build docs PDF
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mkdocs build --strict -f mkdocs.pdf.yml
+          cp site/pdf/geocog.pdf geocog-${VERSION}-docs.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-docs-pdf
+          path: "*.pdf"
+
+  # ── SBOM for release ─────────────────────────────────────
+  release-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project
+        run: pip install -e ".[dev]"
+      - name: Generate SBOM
+        run: |
+          pip install cyclonedx-bom
+          cyclonedx-py environment -o geocog-sbom.json --output-format JSON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geocog-sbom
+          path: geocog-sbom.json
+
+  # ── Publish to PyPI (enable once a trusted publisher exists) ──
+  # publish-pypi:
+  #   needs: build-python
+  #   runs-on: ubuntu-latest
+  #   environment: pypi
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: python-dist
+  #         path: dist/
+  #     - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # ── GitHub Release with all artifacts ────────────────────
+  github-release:
+    needs:
+      - build-python
+      - build-binary
+      - build-deb
+      - build-rpm
+      - build-appimage
+      - build-snap
+      - build-docs-pdf
+      - release-sbom
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      - name: List artifacts
+        run: find artifacts/ -type f | sort
+      - name: Generate release body
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          cat > release-body.md << 'EOF'
+          ## geocog VERSION
+
+          A small, fast TUI and toolkit for the **GeoTIFF → COG → object storage →
+          GeoServer VRT** workflow. Made with 💗 by [Kartoza](https://kartoza.com).
+
+          > ℹ️ **Runtime dependencies:** the standalone binaries and OS packages
+          > bundle Python + Textual, but **GDAL** (and, for uploads, the MinIO
+          > client `mc`) must be available on your `PATH`. The fully self-contained
+          > option is `nix run github:kartoza/geocog#geocog`.
+
+          ### Installation
+
+          #### Nix (fully self-contained — recommended)
+
+          ```bash
+          nix run github:kartoza/geocog#geocog
+          ```
+
+          #### Linux
+
+          | Format | File | Install |
+          |--------|------|---------|
+          | **AppImage** | `geocog-VERSION-x86_64.AppImage` | `chmod +x geocog-*.AppImage && ./geocog-*.AppImage` |
+          | **Debian/Ubuntu** | `geocog_VERSION_amd64.deb` | `sudo apt install ./geocog_*.deb` |
+          | **Fedora/RHEL** | `geocog-VERSION-1.x86_64.rpm` | `sudo rpm -i geocog-*.rpm` |
+          | **Snap** | `geocog_VERSION_amd64.snap` | `sudo snap install --dangerous geocog_*.snap` |
+          | **Standalone** | `geocog-linux-amd64` | `chmod +x geocog-linux-amd64 && sudo cp geocog-linux-amd64 /usr/local/bin/geocog` |
+
+          #### macOS
+
+          | Architecture | File |
+          |-------------|------|
+          | **Intel (x86_64)** | `geocog-macos-amd64` |
+          | **Apple Silicon (M1/M2/M3)** | `geocog-macos-arm64` |
+
+          ```bash
+          chmod +x geocog-macos-*
+          sudo cp geocog-macos-* /usr/local/bin/geocog
+          ```
+
+          > **Gatekeeper:** `xattr -d com.apple.quarantine /usr/local/bin/geocog` or allow in System Settings → Privacy & Security.
+
+          #### Windows
+
+          Download `geocog-windows-amd64.exe` and move it to a directory on your `PATH`.
+          > **SmartScreen:** click "More info" → "Run anyway" on first launch.
+
+          #### Python (pip)
+
+          ```bash
+          pipx install geocog   # or: pip install geocog
+          ```
+
+          ### Other downloads
+
+          | File | Description |
+          |------|-------------|
+          | `geocog-VERSION.tar.gz` | Source distribution |
+          | `geocog-VERSION-py3-none-any.whl` | Python wheel |
+          | `geocog-VERSION-docs.pdf` | Documentation (combined PDF) |
+          | `geocog-sbom.json` | Software Bill of Materials (CycloneDX JSON) |
+
+          > **Unsigned packages:** .deb/.rpm/.snap are not signed with a distribution
+          > key. For .snap use `--dangerous`; for .rpm with GPG checking use
+          > `sudo rpm -i --nosignature geocog-*.rpm`.
+
+          ---
+
+          **[Documentation](https://kartoza.github.io/geocog)** · **[Source](https://github.com/kartoza/geocog)** · **[Sponsor](https://github.com/sponsors/kartoza)**
+
+          Made with 💗 by [Kartoza](https://kartoza.com)
+          EOF
+          sed -i "s/VERSION/${VERSION}/g" release-body.md
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-body.md
+          files: |
+            artifacts/python-dist/*
+            artifacts/geocog-linux-amd64/*
+            artifacts/geocog-macos-amd64/*
+            artifacts/geocog-macos-arm64/*
+            artifacts/geocog-windows-amd64.exe/*
+            artifacts/geocog-deb/*
+            artifacts/geocog-rpm/**/*
+            artifacts/geocog-appimage/*
+            artifacts/geocog-snap/*
+            artifacts/geocog-docs-pdf/*
+            artifacts/geocog-sbom/*

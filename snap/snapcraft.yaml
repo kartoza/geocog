@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+name: geocog
+base: core22
+version: '0.1.0'  # overwritten from the git tag by the release workflow
+summary: TUI + toolkit for the GeoTIFF → COG → object storage → VRT workflow
+description: |
+  geocog turns ordinary GeoTIFFs into cloud-hosted Cloud Optimized GeoTIFFs
+  (COGs), uploads them to S3/MinIO, and wraps them in a single GeoServer-ready
+  GDAL VRT. It ships as a small, fast, keyboard-driven terminal UI plus matching
+  CLI tools. GDAL and the MinIO client are bundled.
+
+grade: stable
+confinement: strict
+
+apps:
+  geocog:
+    command: bin/geocog
+    plugs:
+      - home
+      - network
+      - removable-media
+
+parts:
+  geocog:
+    plugin: python
+    source: .
+    stage-packages:
+      - gdal-bin
+      - libgdal30
+    build-packages:
+      - libgdal-dev

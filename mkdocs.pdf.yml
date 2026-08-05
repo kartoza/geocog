@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Kartoza (Pty) Ltd <info@kartoza.com>
+# SPDX-License-Identifier: MIT
+#
+# PDF overlay config. Inherits everything from mkdocs.yml and adds the
+# mkdocs-with-pdf plugin, which is NOT available in the Nix docs env. Use this
+# config only where the `docs` pip extra is installed (CI / `make docs-pdf`):
+#
+#   mkdocs build --strict -f mkdocs.pdf.yml     # -> site/ + site/pdf/geocog.pdf
+INHERIT: mkdocs.yml
+
+plugins:
+  - search
+  - with-pdf:
+      author: Kartoza (Pty) Ltd
+      copyright: Made with 💗 by Kartoza
+      cover_title: geocog
+      cover_subtitle: GeoTIFF → COG → object storage → GeoServer VRT
+      output_path: pdf/geocog.pdf
+      enabled_if_env: null
+      toc_level: 3
+      ordered_chapter_level: 2
+      render_js: false
